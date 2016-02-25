@@ -5,6 +5,7 @@ import java.awt.Polygon;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import project.main.Main;
@@ -143,7 +144,7 @@ public class Functions {
 	
 	public static Point2D getIntersection(Line2D ray, Line2D edge){
 		if(equal(ray.getP2(), edge.getP1()) || equal(ray.getP2(), edge.getP2())){
-			//return ray.getP2();
+			return ray.getP2();
 		}
 		ParametricLine2D r = new ParametricLine2D.Double(ray);
 		ParametricLine2D s = new ParametricLine2D.Double(edge);
@@ -162,65 +163,48 @@ public class Functions {
 		return new Point2D.Double(r.px+r.dx*T1, r.py+r.dy*T1);
 	} 
 	
-	public static Point2D getClosestIntersection(Line2D ray, List<Point2D> points){
+	public static List<Point2D> getAllIntersections(Line2D ray, List<Point2D> points){
 		//(isOutsidePolygon(ray, points) && contains(points, ray.getP1())) return null;
 		//if(isEdge(ray, getEdges(points))) return ray.getP2();
-		Point2D closestIntersection = null;
-		double lowestDist = Double.MAX_VALUE;
-		ParametricLine2D r = new ParametricLine2D.Double(ray);
+		List<Point2D> intersections = new ArrayList<>();
 		List<Line2D> edges = getEdges(points);
 		for(Line2D edge : edges){
 			//if(equal(edge.getP1(), ray.getP1()) || equal(edge.getP2(), ray.getP1())) continue;
 			Point2D intersection = getIntersection(ray, edge);
 			//System.out.println("Intersection: " + intersection + " | Edge: " + edge.getP1() +"," + edge.getP2());
 			if(intersection == null) continue;
-			double dist = dist(ray.getP1(), intersection);
-			//if((equal(edge.getP1(), ray.getP1()) || equal(edge.getP2(), ray.getP1())) && dist == 0) continue;
-			if(closestIntersection == null || dist < lowestDist){
-				lowestDist = dist;
-				closestIntersection = intersection;
-			}
+			intersections.add(intersection);
 		}
-		return closestIntersection;		
+		return intersections;
 	}
 	
 	public static List<Point2D> raycast(Point2D guard, Point2D point, List<Point2D> points, int counter){
 		//System.out.println("Recursion: " + counter);
-		counter++;
 		//System.out.println("Point: " + point.getX() + " " + point.getY());
 		//System.out.println("Guard: " + guard.getX() + " " + guard.getY());
-		List<Point2D> intersections = new ArrayList<Point2D>();
+		List<Point2D> visibleIntersections = new ArrayList<Point2D>();
 		Line2D ray = new Line2D.Double(guard, point);
-		Point2D intersection = getClosestIntersection(ray, points);
-		if(intersection == null){
+		List<Point2D> intersections = getAllIntersections(ray, points);
+		if(intersections == null) {
 			//System.out.println("Intersection null");
-			return intersections;
-		}		
-		if(equal(intersection, guard)){			
+			return visibleIntersections;
+		}
+		intersections.sort(Comparator.comparingDouble(p -> guard.distance(point)));
+		if(intersections.size() == 0 || equal(intersections.get(0), guard)){
 			//System.out.println("Intersection = Guard");
-			return intersections;
-		} 
-		intersections.add(intersection);
-		//System.out.println("Closest Intersection: " + intersection);
-		//System.out.println("X:" + intersection.getX() + "| Y:" + intersection.getY() + " | isVertex:" + 
-		//					((isVertex(intersection, points)) ? "true" : "false"));	
-		if(isVertex(intersection, points)){
-			double angle = Math.atan2(ray.getY2() - ray.getY1(), ray.getX2() - ray.getX1());
-			double dist = dist(ray.getP1(), ray.getP2());
-			double delta = 0.00001;
-			Point2D p1 = new Point2D.Double(guard.getX() + dist*Math.cos(angle+delta),
-											guard.getY() + dist*Math.sin(angle+delta));
-			Point2D p2 = new Point2D.Double(guard.getX() + dist*Math.cos(angle-delta),
-											guard.getY() + dist*Math.sin(angle-delta));
-			intersections.addAll(raycast(guard, p1, points, counter));
-			intersections.addAll(raycast(guard, p2, points, counter));
-		}				
-		return intersections;
+			// ToDo: Handle zero length intersections
+			return visibleIntersections;
+		}
+		int i = 0;
+		do {
+			visibleIntersections.add(intersections.get(i));
+		} while (i + 1 < intersections.size() && isVertex(intersections.get(i), points) && ++i > 0);
+		return visibleIntersections;
 	}
 	
 	public static boolean hasLineOfSight(Point2D guard, Point2D point, List<Point2D> points){
 		Line2D ray = new Line2D.Double(guard, point);
-		Point2D intersection = getClosestIntersection(ray, points);
+		Point2D intersection = getAllIntersections(ray, points).get(0);
 		return intersection != null && equal(point, intersection);
 	}
 	
