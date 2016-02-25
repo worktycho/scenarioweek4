@@ -12,23 +12,22 @@ import java.util.List;
 import javax.swing.JPanel;
 
 import project.algorithm.Triangulation;
+import project.main.MuseumPolygon;
 
 public class Museum extends FPanel{
 
 	private static final long serialVersionUID = -7657783633657321653L;
 
 	private int id;
-	public List<Point2D> points;
-	public List<Line2D> edges;
-	public List<Guard> guards;
+	public MuseumPolygon Modelpolygon;
 	
 	private static final Color COLOR_MUSEUM = new Color(120, 0, 100);
-	
+	private List<Guard> guards;
+
 	public Museum(int id, List<Double> x, List<Double> y){
-		this.id = id;	
-		this.points = Functions.getPoints(x, y);
-		this.edges = Functions.getEdges(points);
-		this.guards = new ArrayList<Guard>();
+		this.id = id;
+		this.Modelpolygon = new MuseumPolygon(x, y);
+		guards = new ArrayList<>();
 	}
 	
 	public void add(Guard guard){
@@ -43,7 +42,7 @@ public class Museum extends FPanel{
 	protected void paintComponent(Graphics g){
 		super.paintComponent(g);		
 		Graphics2D g2 = (Graphics2D) g;
-		Polygon polygon = Functions.getPolygon(points);
+		Polygon polygon = Modelpolygon.getGraphicsPolygon();
 		g2.setColor(COLOR_MUSEUM);
 		g2.fillPolygon(polygon);	
 		g2.draw(polygon);
@@ -59,7 +58,7 @@ public class Museum extends FPanel{
 	@Override
 	public String toString(){
 		String str = "Museum:";
-		for(Point2D p : points){
+		for(Point2D p : Modelpolygon.getVerticies()){
 			str += "(" + p.getX() + "," + p.getY() + "),";
 		}
 		str = (str.charAt(str.length() - 1) == ',') ? str.substring(0, str.length() - 1) : str;

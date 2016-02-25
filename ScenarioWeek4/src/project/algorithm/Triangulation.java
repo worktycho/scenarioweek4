@@ -7,7 +7,7 @@ import java.util.List;
 
 import project.visualization.Museum;
 
-// I don’t get where the edges of polygon are inputted. 
+// I donï¿½t get where the edges of polygon are inputted. 
 
 
 
@@ -315,7 +315,7 @@ public class Triangulation {
 	
 		return ntri;
 	}
-		
+		/*
 	public static List<List<Point2D>> triangulate(Museum museum){
 		XYZ[] points = new XYZ[museum.points.size()];
 		for(int i = 0; i < museum.points.size(); i++){
@@ -345,7 +345,7 @@ public class Triangulation {
 		}
 		return list;
 	}
-
+*/
 	public static void m (String[] args){
 		int nv = 20;
 		if (args.length > 0 && args[0] != null) nv = new Integer(args[0]).intValue();

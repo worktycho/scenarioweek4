@@ -4,11 +4,11 @@ import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
+import project.main.AngleRange;
 import project.main.Main;
+import project.main.MuseumPolygon;
 
 public class Functions {
 
@@ -65,55 +65,7 @@ public class Functions {
 		return !(crossings % 2 == 1);
 	}
 	*/
-	
-	
-	public static boolean isOutsidePolygon(Point2D point, List<Point2D> points){
-		for(Line2D edge : getEdges(points)){
-			System.out.println("Val: " + side(point, edge));
-			if(side(point, edge) == 1){
-				//return true;
-			}
-		}
-		return false;
-	}
-	
-	public static boolean isOutsidePolygon(Line2D line, List<Point2D> points){
-		for(Point2D point : new LineIterator(line)){
-			if(equal(line.getP1(), point) || equal(line.getP2(), point)){
-				continue;
-			}
-			if(isOutsidePolygon(point, points)){
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public static List<Point2D> getPoints(List<Double> x, List<Double> y){
-		List<Point2D> points = new ArrayList<Point2D>();
-		for(int i = 0; i < x.size(); i++){
-			points.add(new Point2D.Double(x.get(i), y.get(i)));
-		}
-		return points;
-	}
-	
- 	public static List<Line2D> getEdges(List<Point2D> points){
-		List<Line2D> edges = new ArrayList<Line2D>();
-		for(int i = 0; i < points.size(); i++){
-			edges.add(new Line2D.Double(points.get(i), points.get((i + 1) % points.size())));
-		}
-		return edges;
-	}
- 	
- 	public static Polygon getPolygon(List<Point2D> points){
- 		int[] x = new int[points.size()];
-		int[] y = new int[points.size()];
-		for(int i = 0; i < points.size(); i++){
-			x[i] = Functions.pointToPixel(points.get(i).getX(), 100, Main.DIMENSION.width/2);
-			y[i] = Functions.pointToPixel(points.get(i).getY(), 100, Main.DIMENSION.height/2);
-		}
-		return new Polygon(x, y, points.size());
- 	}
+
  	
 	public static boolean lineBreaks(Line2D line_1, Line2D line_2){
 		Point2D intersection;
@@ -163,11 +115,11 @@ public class Functions {
 		return new Point2D.Double(r.px+r.dx*T1, r.py+r.dy*T1);
 	} 
 	
-	public static List<Point2D> getAllIntersections(Line2D ray, List<Point2D> points){
+	public static List<Point2D> getAllIntersections(Line2D ray, MuseumPolygon points){
 		//(isOutsidePolygon(ray, points) && contains(points, ray.getP1())) return null;
 		//if(isEdge(ray, getEdges(points))) return ray.getP2();
 		List<Point2D> intersections = new ArrayList<>();
-		List<Line2D> edges = getEdges(points);
+		List<Line2D> edges = points.getEdges();
 		for(Line2D edge : edges){
 			//if(equal(edge.getP1(), ray.getP1()) || equal(edge.getP2(), ray.getP1())) continue;
 			Point2D intersection = getIntersection(ray, edge);
@@ -177,37 +129,43 @@ public class Functions {
 		}
 		return intersections;
 	}
-	
-	public static List<Point2D> raycast(Point2D guard, Point2D point, List<Point2D> points, int counter){
+	public static List<Point2D> raycast(Point2D guard, Point2D point, MuseumPolygon polygon, int counter){
 		//System.out.println("Recursion: " + counter);
 		//System.out.println("Point: " + point.getX() + " " + point.getY());
 		//System.out.println("Guard: " + guard.getX() + " " + guard.getY());
 		List<Point2D> visibleIntersections = new ArrayList<Point2D>();
 		Line2D ray = new Line2D.Double(guard, point);
-		List<Point2D> intersections = getAllIntersections(ray, points);
+		List<Point2D> intersections = getAllIntersections(ray, polygon);
 		if(intersections == null) {
 			//System.out.println("Intersection null");
 			return visibleIntersections;
 		}
-		intersections.sort(Comparator.comparingDouble(p -> guard.distance(point)));
-		if(intersections.size() == 0 || equal(intersections.get(0), guard)){
+
+		intersections.sort(new EuclidianDistanceComparitor(guard));
+
+		double rayAngle = getLineAngle(guard, point);
+
+		if(equal(intersections.get(0), guard)){
 			//System.out.println("Intersection = Guard");
 			// ToDo: Handle zero length intersections
-			return visibleIntersections;
+			AngleRange homeIntersectionRange = polygon.getInsideRangeFromPoint(guard);
+			if (!homeIntersectionRange.containsAngle(rayAngle)) {
+				return visibleIntersections;
+			}
 		}
 		int i = 0;
 		do {
 			visibleIntersections.add(intersections.get(i));
-		} while (i + 1 < intersections.size() && isVertex(intersections.get(i), points) && ++i > 0);
+		} while (i + 1 < intersections.size() &&
+				polygon.hasVertex(intersections.get(i)) &&
+				polygon.getInsideRangeFromPoint(intersections.get(i)).containsAngle(rayAngle) &&
+				++i > 0);
 		return visibleIntersections;
 	}
-	
-	public static boolean hasLineOfSight(Point2D guard, Point2D point, List<Point2D> points){
-		Line2D ray = new Line2D.Double(guard, point);
-		Point2D intersection = getAllIntersections(ray, points).get(0);
-		return intersection != null && equal(point, intersection);
+
+	public static double getLineAngle(Point2D guard, Point2D point) {
+		return Math.atan2(guard.getX() - point.getX(), guard.getY() - point.getY());
 	}
-	
 
 	public static double dist(Point2D p1, Point2D p2){
 		return Math.sqrt((p1.getX()-p2.getX())*(p1.getX()-p2.getX())
@@ -249,5 +207,38 @@ public class Functions {
 		double value = (line.getX2() - line.getX1()) * (point.getY() - line.getY1()) 
 			- (line.getY2() - line.getY1()) * (point.getX() - line.getX1());
 		return (value > 0) ? 1 : (value < 0) ? -1 : 0;
+	}
+
+	public static boolean ListContains(List<Point2D> list, Point2D point) {
+		for (Point2D listPoint : list) {
+			if (equal(listPoint, point)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static Polygon PointListToPolygon(List<Point2D> vertexs)
+	{
+		int[] x = new int[vertexs.size()];
+		int[] y = new int[vertexs.size()];
+		for(int i = 0; i < vertexs.size(); i++){
+			x[i] = Functions.pointToPixel(vertexs.get(i).getX(), 100, Main.DIMENSION.width/2);
+			y[i] = Functions.pointToPixel(vertexs.get(i).getY(), 100, Main.DIMENSION.height/2);
+		}
+		return new Polygon(x, y, vertexs.size());
+	}
+	// Stupid Java
+	private static class EuclidianDistanceComparitor implements Comparator<Point2D> {
+		private Point2D guard;
+
+		public EuclidianDistanceComparitor(Point2D guard) {
+			this.guard = guard;
+		}
+
+		@Override
+		public int compare(Point2D p1, Point2D p2) {
+			return Double.compare(guard.distance(p1), guard.distance(p2));
+		}
 	}
 }

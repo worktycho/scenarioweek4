@@ -18,21 +18,17 @@ public class Guard {
 	
 	private Point2D guard;
 	public List<Point2D> points;
-	public List<Line2D> edges;
-	private Museum museum;	
-	
+
 	public Guard(double x, double y, Museum museum){
 		this.guard = new Point2D.Double(x, -y);
-		this.museum = museum;
 		this.points = getPoints(guard, museum);
-		this.edges = Functions.getEdges(points);
 	}
 	
 	private static List<Point2D> getPoints(Point2D guard, Museum museum){
 		List<Point2D> guardPoints = new ArrayList<Point2D>();
-		for(Point2D point : museum.points){
+		for(Point2D point : museum.Modelpolygon.getVerticies()){
 			if(point.equals(guard)) continue;
-			List<Point2D> intersections = Functions.raycast(guard, point, museum.points, 0);
+			List<Point2D> intersections = Functions.raycast(guard, point, museum.Modelpolygon, 0);
 			guardPoints.addAll(intersections);
 		}
 		Collections.sort(guardPoints, new Point2DComparator(guard));
@@ -47,7 +43,7 @@ public class Guard {
 			guardPoints.add(guard);
 			guardPoints.add(p1);
 			guardPoints.add(p2);
-			Polygon triangle = Functions.getPolygon(guardPoints);
+			Polygon triangle = Functions.PointListToPolygon(guardPoints);
 			g2.setColor(COLOR_GUARD);
 			g2.fillPolygon(triangle);
 			//g2.setColor(Color.ORANGE);
