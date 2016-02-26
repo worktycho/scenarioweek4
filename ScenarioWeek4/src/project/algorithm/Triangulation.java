@@ -1,385 +1,264 @@
 package project.algorithm;
 
-import java.awt.Polygon;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import project.visualization.Museum;
-
-// I don�t get where the edges of polygon are inputted. 
-
-
-
-/*
- * ported from p bourke's triangulate.c
- * http://astronomy.swin.edu.au/~pbourke/terrain/triangulate/triangulate.c
- *
- * fjenett, 20th february 2005, offenbach-germany.
- * contact: http://www.florianjenett.de/
- *
- *  run like this:
- *  javac *.java
- *  java triangulate
- *
- * to view the output: http://processing.org/
- *
+/**
+ * A simple implementation of the ear cutting algorithm to Triangulation simple
+ * polygons without holes. For more information:
+ * http://cgm.cs.mcgill.ca/~godfried/teaching/cg-projects/97/Ian/algorithm2.html
+ * http://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
+ * 
+ * @author badlogicgames@gmail.com
+ * @author Nicolas Gramlich (Improved performance. Collinear edges are now supported.)
  */
-
-class ITRIANGLE {
-	int p1, p2, p3;
-	ITRIANGLE(){
-		
-	}
-}
-class IEDGE {
-	int p1, p2;
-	IEDGE(){ 
-		p1 = -1; 
-		p2 = -1;
-	}
-}
-class XYZ {
-	double x, y, z;
-	XYZ(){ 
-		
-	}
-	XYZ(double _x, double _y, double _z){
-		this.x = _x; 
-		this.y = _y;
-		this.z = _z;
-	}
-}
-
 public class Triangulation {
+	
 
-	public static final double EPSILON = 0.000001;
+  private static final int CONCAVE = 1;
+  private static final int CONVEX = -1;
 
-	/*
-	Return TRUE if a point (xp,yp) is inside the circumcircle made up
-	of the points (x1,y1), (x2,y2), (x3,y3)
-	The circumcircle centre is returned in (xc,yc) and the radius r
-	NOTE: A point on the edge is inside the circumcircle
-	*/
-	private static boolean CircumCircle(double xp, double yp, 
-								double x1, double y1, 
-								double x2, double y2,
-								double x3, double y3, /*double xc, double yc, double r*/
-								XYZ circle){
-		double m1,m2,mx1,mx2,my1,my2;
-		double dx,dy,rsqr,drsqr;
-		double xc, yc, r;
-	
-		/* Check for coincident points */
-	
-		if ( Math.abs(y1-y2) < EPSILON && Math.abs(y2-y3) < EPSILON ){
-			System.out.println("CircumCircle: Points are coincident.");
-			return false;
-		}
-	
-		if ( Math.abs(y2-y1) < EPSILON ){
-			m2 = - (x3-x2) / (y3-y2);
-			mx2 = (x2 + x3) / 2.0;
-			my2 = (y2 + y3) / 2.0;
-			xc = (x2 + x1) / 2.0;
-			yc = m2 * (xc - mx2) + my2;
-		} else if ( Math.abs(y3-y2) < EPSILON ){
-			m1 = - (x2-x1) / (y2-y1);
-			mx1 = (x1 + x2) / 2.0;
-			my1 = (y1 + y2) / 2.0;
-			xc = (x3 + x2) / 2.0;
-			yc = m1 * (xc - mx1) + my1; 
-		} else{
-			m1 = - (x2-x1) / (y2-y1);
-			m2 = - (x3-x2) / (y3-y2);
-			mx1 = (x1 + x2) / 2.0;
-			mx2 = (x2 + x3) / 2.0;
-			my1 = (y1 + y2) / 2.0;
-			my2 = (y2 + y3) / 2.0;
-			xc = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
-			yc = m1 * (xc - mx1) + my1;
-		}
-	
-		dx = x2 - xc;
-		dy = y2 - yc;
-		rsqr = dx*dx + dy*dy;
-		r = Math.sqrt(rsqr);
-		
-		dx = xp - xc;
-		dy = yp - yc;
-		drsqr = dx*dx + dy*dy;
-		
-		circle.x = xc;
-		circle.y = yc;
-		circle.z = r;
-	
-		return ( drsqr <= rsqr ? true : false );
-	}
+  private int concaveVertexCount;
 
-	/*
-	Triangulation subroutine
-	Takes as input NV vertices in array pxyz
-	Returned is a list of ntri triangular faces in the array v
-	These triangles are arranged in a consistent clockwise order.
-	The triangle array 'v' should be malloced to 3 * nv
-	The vertex array pxyz must be big enough to hold 3 more points
-	The vertex array must be sorted in increasing x values say
-	
-	qsort(p,nv,sizeof(XYZ),XYZCompare);
-	
-	int XYZCompare(void *v1,void *v2)
-	{
-	XYZ *p1,*p2;
-	p1 = v1;
-	p2 = v2;
-	if (p1->x < p2->x)
-	return(-1);
-	else if (p1->x > p2->x)
-	return(1);
-	else
-	return(0);
-	}
-	*/
+  /**
+   * Triangulations the given (concave) polygon to a list of triangles. The
+   * resulting triangles have clockwise order. 
+   * @param polygon the polygon
+   * @return the triangles
+   */
+  public List<Point2D> computeTriangles(final List<Point2D> polygon) {
+    // TODO Check if LinkedList performs better
+    final ArrayList<Point2D> triangles = new ArrayList<Point2D>();
+    final ArrayList<Point2D> vertices = new ArrayList<Point2D>(polygon.size());
+    vertices.addAll(polygon);
 
-	private static int Triangulate (int nv, XYZ pxyz[], ITRIANGLE v[]){
-		boolean complete[] = null;
-		IEDGE edges[] = null;
-		int nedge = 0;
-		int trimax, emax = 200;
-		int status = 0;
-	
-		boolean inside;
-		//int i, j, k;
-		double xp, yp, x1, y1, x2, y2, x3, y3, xc, yc, r;
-		double xmin, xmax, ymin, ymax, xmid, ymid;
-		double dx, dy, dmax;
-	
-		int ntri = 0;
-	
-		/* Allocate memory for the completeness list, flag for each triangle */
-		trimax = 4*nv;
-		complete = new boolean[trimax];
-		for (int ic=0; ic<trimax; ic++) complete[ic] = false;
-	
-		/* Allocate memory for the edge list */
-		edges = new IEDGE[emax];
-		for (int ie=0; ie<emax; ie++) edges[ie] = new IEDGE();
-	
-		/*
-		Find the maximum and minimum vertex bounds.
-		This is to allow calculation of the bounding triangle
-		*/
-		xmin = pxyz[0].x;
-		ymin = pxyz[0].y;
-		xmax = xmin;
-		ymax = ymin;
-		for (int i=1;i<nv;i++){
-			if (pxyz[i].x < xmin) xmin = pxyz[i].x;
-			if (pxyz[i].x > xmax) xmax = pxyz[i].x;
-			if (pxyz[i].y < ymin) ymin = pxyz[i].y;
-			if (pxyz[i].y > ymax) ymax = pxyz[i].y;
-		}
-		dx = xmax - xmin;
-		dy = ymax - ymin;
-		dmax = (dx > dy) ? dx : dy;
-		xmid = (xmax + xmin) / 2.0;
-		ymid = (ymax + ymin) / 2.0;
-	
-		/*
-		Set up the supertriangle
-		This is a triangle which encompasses all the sample points.
-		The supertriangle coordinates are added to the end of the
-		vertex list. The supertriangle is the first triangle in
-		the triangle list.
-		*/
-		pxyz[nv+0].x = xmid - 2.0 * dmax;
-		pxyz[nv+0].y = ymid - dmax;
-		pxyz[nv+0].z = 0.0;
-		pxyz[nv+1].x = xmid;
-		pxyz[nv+1].y = ymid + 2.0 * dmax;
-		pxyz[nv+1].z = 0.0;
-		pxyz[nv+2].x = xmid + 2.0 * dmax;
-		pxyz[nv+2].y = ymid - dmax;
-		pxyz[nv+2].z = 0.0;
-		v[0].p1 = nv;
-		v[0].p2 = nv+1;
-		v[0].p3 = nv+2;
-		complete[0] = false;
-		ntri = 1;
-	
-	
-		/*
-		Include each point one at a time into the existing mesh
-		*/
-		for (int i=0;i<nv;i++){
-			xp = pxyz[i].x;
-			yp = pxyz[i].y;
-			nedge = 0;
-			
-	
-			/*
-			Set up the edge buffer.
-			If the point (xp,yp) lies inside the circumcircle then the
-			three edges of that triangle are added to the edge buffer
-			and that triangle is removed.
-			*/
-			XYZ circle = new XYZ();
-			for (int j=0;j<ntri;j++){
-				if (complete[j]) continue;
-				x1 = pxyz[v[j].p1].x;
-				y1 = pxyz[v[j].p1].y;
-				x2 = pxyz[v[j].p2].x;
-				y2 = pxyz[v[j].p2].y;
-				x3 = pxyz[v[j].p3].x;
-				y3 = pxyz[v[j].p3].y;
-				inside = CircumCircle( xp, yp,  x1, y1,  x2, y2,  x3, y3,  circle );
-				xc = circle.x; yc = circle.y; r = circle.z;
-				if (xc + r < xp) complete[j] = true;
-				if (inside){
-					/* Check that we haven't exceeded the edge list size */
-					if (nedge+3 >= emax){
-						emax += 100;
-						IEDGE[] edges_n = new IEDGE[emax];
-						for (int ie=0; ie<emax; ie++) edges_n[ie] = new IEDGE();
-						System.arraycopy(edges, 0, edges_n, 0, edges.length);
-						edges = edges_n;
-					}
-					edges[nedge+0].p1 = v[j].p1;
-					edges[nedge+0].p2 = v[j].p2;
-					edges[nedge+1].p1 = v[j].p2;
-					edges[nedge+1].p2 = v[j].p3;
-					edges[nedge+2].p1 = v[j].p3;
-					edges[nedge+2].p2 = v[j].p1;
-					nedge += 3;
-					v[j].p1 = v[ntri-1].p1;
-					v[j].p2 = v[ntri-1].p2;
-					v[j].p3 = v[ntri-1].p3;
-					complete[j] = complete[ntri-1];
-					ntri--;
-					j--;
-				}
-			}
-	
-			/*
-			Tag multiple edges
-			Note: if all triangles are specified anticlockwise then all
-			interior edges are opposite pointing in direction.
-			*/
-			for (int j=0;j<nedge-1;j++){
-				//if ( !(edges[j].p1 < 0 && edges[j].p2 < 0) )
-				for (int k=j+1;k<nedge;k++){
-					if ((edges[j].p1 == edges[k].p2) && (edges[j].p2 == edges[k].p1)){
-						edges[j].p1 = -1;
-						edges[j].p2 = -1;
-						edges[k].p1 = -1;
-						edges[k].p2 = -1;
-					}
-					/* Shouldn't need the following, see note above */
-					if ((edges[j].p1 == edges[k].p1) && (edges[j].p2 == edges[k].p2)){
-						edges[j].p1 = -1;
-						edges[j].p2 = -1;
-						edges[k].p1 = -1;
-						edges[k].p2 = -1;
-					}
-				}
-			}
-			
-			/*
-			Form new triangles for the current point
-			Skipping over any tagged edges.
-			All edges are arranged in clockwise order.
-			*/
-			for (int j=0;j<nedge;j++){
-				if (edges[j].p1 == -1 || edges[j].p2 == -1) continue;
-				if (ntri >= trimax) return -1;
-				v[ntri].p1 = edges[j].p1;
-				v[ntri].p2 = edges[j].p2;
-				v[ntri].p3 = i;
-				complete[ntri] = false;
-				ntri++;
-			}
-		}
-	
-	
-		/*
-		Remove triangles with supertriangle vertices
-		These are triangles which have a vertex number greater than nv
-		*/
-		for (int i=0;i<ntri;i++){
-			if (v[i].p1 >= nv || v[i].p2 >= nv || v[i].p3 >= nv){
-				v[i] = v[ntri-1];
-				ntri--;
-				i--;
-			}
-		}
-	
-		return ntri;
-	}
-		/*
-	public static List<List<Point2D>> triangulate(Museum museum){
-		XYZ[] points = new XYZ[museum.points.size()];
-		for(int i = 0; i < museum.points.size(); i++){
-			points[i] = new XYZ(museum.points.get(i).getX(), museum.points.get(i).getY(), 0.0);
-		}
-		int nv = points.length - 3;
-		ITRIANGLE[] triangles = new ITRIANGLE[nv*3];
-		for(int i = 0; i < triangles.length; i++){
-			triangles[i] = new ITRIANGLE();
-		}
-		int ntri = Triangulate(nv, points, triangles);
-		System.out.println("ntri: " + ntri);
-		List<List<Point2D>> list = new ArrayList<List<Point2D>>();
-		for(int i = 0; i < ntri; i++){
-			List<Point2D> coord = new ArrayList<Point2D>();
-			coord.add(new Point2D.Double(points[triangles[i].p1].x, points[triangles[i].p1].y));
-			coord.add(new Point2D.Double(points[triangles[i].p2].x, points[triangles[i].p2].y));
-			coord.add(new Point2D.Double(points[triangles[i].p3].x, points[triangles[i].p3].y));
-			list.add(coord);
-		}
-		for (int tt=0; tt<ntri; tt++){
-			System.out.println("beginShape(TRIANGLES);");
-			System.out.println("vertex( "+points[triangles[tt].p1].x+","+points[triangles[tt].p1].y+");");
-			System.out.println("vertex( "+points[triangles[tt].p2].x+","+points[triangles[tt].p2].y+");");
-			System.out.println("vertex( "+points[triangles[tt].p3].x+","+points[triangles[tt].p3].y+");");
-			System.out.println("endShape();");
-		}
-		return list;
-	}
-*/
-	public static void m (String[] args){
-		int nv = 20;
-		if (args.length > 0 && args[0] != null) nv = new Integer(args[0]).intValue();
-		if (nv <= 0 || nv > 1000) nv = 20;
-	
-		//System.out.println("Creating " + nv + " random points.");
-	
-		XYZ[] points = new XYZ[nv+3];
-	
-		for (int i=0; i<points.length; i++) points[i] = new XYZ(i*4.0, 400.0 * Math.random(), 0.0);
-	
-		ITRIANGLE[] triangles = new ITRIANGLE[nv*3];
-	
-		for (int i=0; i<triangles.length; i++) triangles[i] = new ITRIANGLE();
-	
-		int ntri = Triangulate(nv, points, triangles);
-	
-		/*
-		copy-paste the following output into free processing:
-		http://processing.org/
-		*/
-	
-		System.out.println("size(400,400); noFill();");
-	
-		for (int tt=0; tt<points.length; tt++){
-			System.out.println("rect("+points[tt].x+","+points[tt].y+", 3, 3);");
-		}
-	
-		for (int tt=0; tt<ntri; tt++){
-			System.out.println("beginShape(TRIANGLES);");
-			System.out.println("vertex( "+points[triangles[tt].p1].x+","+points[triangles[tt].p1].y+");");
-			System.out.println("vertex( "+points[triangles[tt].p2].x+","+points[triangles[tt].p2].y+");");
-			System.out.println("vertex( "+points[triangles[tt].p3].x+","+points[triangles[tt].p3].y+");");
-			System.out.println("endShape();");
-		}	
-	}
+    if(vertices.size() == 3) {
+      triangles.addAll(vertices);
+      return triangles;
+    }
+
+    while(vertices.size() >= 3) {
+      // TODO Usually(Always?) only the Types of the vertices next to the ear change! --> Improve
+      final int vertexTypes[] = this.classifyVertices(vertices);
+
+      final int vertexCount = vertices.size();
+      for(int index = 0; index < vertexCount; index++) {
+        if(this.isEarTip(vertices, index, vertexTypes)) {
+          this.cutEarTip(vertices, index, triangles);
+          break;
+        }
+      }
+    }
+
+    return triangles;
+  }
+
+  private static boolean areVerticesClockwise(final ArrayList<Point2D> pVertices) {
+    final int vertexCount = pVertices.size();
+
+    float area = 0;
+    for(int i = 0; i < vertexCount; i++) {
+      final Point2D p1 = pVertices.get(i);
+      final Point2D p2 = pVertices.get(Triangulation.computeNextIndex(pVertices, i));
+      area += p1.getX() * p2.getY() - p2.getX() * p1.getY();
+    }
+
+    if(area < 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * @param pVertices
+   * @return An array of length <code>pVertices.size()</code> filled with either {@link Triangulation#CONCAVE} or
+   * {@link Triangulation#CONVEX}.
+   */
+  private int[] classifyVertices(final ArrayList<Point2D> pVertices) {
+    final int vertexCount = pVertices.size();
+
+    final int[] vertexTypes = new int[vertexCount];
+    this.concaveVertexCount = 0;
+
+    /* Ensure vertices are in clockwise order. */
+    if(!Triangulation.areVerticesClockwise(pVertices)) {
+      Collections.reverse(pVertices);
+    }
+
+    for(int index = 0; index < vertexCount; index++) {
+      final int previousIndex = Triangulation.computePreviousIndex(pVertices, index);
+      final int nextIndex = Triangulation.computeNextIndex(pVertices, index);
+
+      final Point2D previousVertex = pVertices.get(previousIndex);
+      final Point2D currentVertex = pVertices.get(index);
+      final Point2D nextVertex = pVertices.get(nextIndex);
+
+      if(Triangulation.isTriangleConvex((float) previousVertex.getX(), (float) previousVertex.getY(), (float)currentVertex.getX(),
+    		  (float) currentVertex.getY(), (float) nextVertex.getX(),(float) nextVertex.getY())) {
+        vertexTypes[index] = CONVEX;
+      } else {
+        vertexTypes[index] = CONCAVE;
+        this.concaveVertexCount++;
+      }
+    }
+
+    return vertexTypes;
+  }
+
+  private static boolean isTriangleConvex(final float pX1, final float pY1, final float pX2, final float pY2, final float pX3, final float pY3) {
+    if(Triangulation.computeSpannedAreaSign(pX1, pY1, pX2, pY2, pX3, pY3) < 0) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  private static int computeSpannedAreaSign(final float pX1, final float pY1, final float pX2, final float pY2, final float pX3, final float pY3) {
+    float area = 0;
+
+    area += pX1 * (pY3 - pY2);
+    area += pX2 * (pY1 - pY3);
+    area += pX3 * (pY2 - pY1);
+
+    return (int)Math.signum(area);
+  }
+
+  /**
+   * @return <code>true</code> when the Triangles contains one or more vertices, <code>false</code> otherwise.
+   */
+  private static boolean isAnyVertexInTriangle(final ArrayList<Point2D> pVertices, final int[] pVertexTypes, final float pX1, final float pY1, final float pX2, final float pY2, final float pX3, final float pY3) {
+    int i = 0;
+
+    final int vertexCount = pVertices.size();
+    while(i < vertexCount - 1) {
+      if((pVertexTypes[i] == CONCAVE)) {
+        final Point2D currentVertex = pVertices.get(i);
+
+        final float currentVertexX = (float) currentVertex.getX();
+        final float currentVertexY = (float) currentVertex.getY();
+
+        /* TODO The following condition fails for perpendicular, axis aligned triangles! 
+         * Removing it doesn't seem to cause problems. 
+         * Maybe it was an optimization?
+         * Maybe it tried to handle collinear pieces ? */
+//        if(((currentVertexX != pX1) && (currentVertexY != pY1)) || ((currentVertexX != pX2) && (currentVertexY != pY2)) || ((currentVertexX != pX3) && (currentVertexY != pY3))) {
+          final int areaSign1 = Triangulation.computeSpannedAreaSign(pX1, pY1, pX2, pY2, currentVertexX, currentVertexY);
+          final int areaSign2 = Triangulation.computeSpannedAreaSign(pX2, pY2, pX3, pY3, currentVertexX, currentVertexY);
+          final int areaSign3 = Triangulation.computeSpannedAreaSign(pX3, pY3, pX1, pY1, currentVertexX, currentVertexY);
+
+          if(areaSign1 > 0 && areaSign2 > 0 && areaSign3 > 0) {
+            return true;
+          } else if(areaSign1 <= 0 && areaSign2 <= 0 && areaSign3 <= 0) {
+            return true;
+          }
+//        }
+      }
+      i++;
+    }
+    return false;
+  }
+
+  private boolean isEarTip(final ArrayList<Point2D> pVertices, final int pEarTipIndex, final int[] pVertexTypes) {
+    if(this.concaveVertexCount != 0) {
+      final Point2D previousVertex = pVertices.get(Triangulation.computePreviousIndex(pVertices, pEarTipIndex));
+      final Point2D currentVertex = pVertices.get(pEarTipIndex);
+      final Point2D nextVertex = pVertices.get(Triangulation.computeNextIndex(pVertices, pEarTipIndex));
+
+      if(Triangulation.isAnyVertexInTriangle(pVertices, pVertexTypes,(float) previousVertex.getX(), (float) previousVertex.getY(), 
+    		  (float) currentVertex.getX(), (float) currentVertex.getY(), (float) nextVertex.getX(), (float) nextVertex.getY())) {
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  }
+
+  private void cutEarTip(final ArrayList<Point2D> pVertices, final int pEarTipIndex, final ArrayList<Point2D> pTriangles) {
+    final int previousIndex = Triangulation.computePreviousIndex(pVertices, pEarTipIndex);
+    final int nextIndex = Triangulation.computeNextIndex(pVertices, pEarTipIndex);
+
+    if(!Triangulation.isCollinear(pVertices, previousIndex, pEarTipIndex, nextIndex)) {
+      pTriangles.add((pVertices.get(previousIndex)));
+      pTriangles.add((pVertices.get(pEarTipIndex)));
+      pTriangles.add((pVertices.get(nextIndex)));
+    }
+
+    pVertices.remove(pEarTipIndex);
+    if(pVertices.size() >= 3) {
+      Triangulation.removeCollinearNeighborEarsAfterRemovingEarTip(pVertices, pEarTipIndex);
+    }
+  }
+
+  private static void removeCollinearNeighborEarsAfterRemovingEarTip(final ArrayList<Point2D> pVertices, final int pEarTipCutIndex) {
+    final int collinearityCheckNextIndex = pEarTipCutIndex % pVertices.size();
+    int collinearCheckPreviousIndex = Triangulation.computePreviousIndex(pVertices, collinearityCheckNextIndex);
+
+    if(Triangulation.isCollinear(pVertices, collinearityCheckNextIndex)) {
+      pVertices.remove(collinearityCheckNextIndex);
+
+      if(pVertices.size() > 3) {
+        /* Update */
+        collinearCheckPreviousIndex = Triangulation.computePreviousIndex(pVertices, collinearityCheckNextIndex);
+        if(Triangulation.isCollinear(pVertices, collinearCheckPreviousIndex)){
+          pVertices.remove(collinearCheckPreviousIndex);
+        }
+      }
+    } else if(Triangulation.isCollinear(pVertices, collinearCheckPreviousIndex)){
+      pVertices.remove(collinearCheckPreviousIndex);
+    }
+  }
+
+  private static boolean isCollinear(final ArrayList<Point2D> pVertices, final int pIndex) {
+    final int previousIndex = Triangulation.computePreviousIndex(pVertices, pIndex);
+    final int nextIndex = Triangulation.computeNextIndex(pVertices, pIndex);
+
+    return Triangulation.isCollinear(pVertices, previousIndex, pIndex, nextIndex);
+  }
+
+  private static boolean isCollinear(final ArrayList<Point2D> pVertices, final int pPreviousIndex, final int pIndex, final int pNextIndex) {
+    final Point2D previousVertex = pVertices.get(pPreviousIndex);
+    final Point2D vertex = pVertices.get(pIndex);
+    final Point2D nextVertex = pVertices.get(pNextIndex);
+
+    return Triangulation.computeSpannedAreaSign((float)previousVertex.getX(), (float) previousVertex.getY(), 
+    		(float)vertex.getX(), (float)vertex.getY(), (float)nextVertex.getX(), (float)nextVertex.getY()) == 0;
+  }
+
+  private static int computePreviousIndex(final List<Point2D> pVertices, final int pIndex) {
+    return pIndex == 0 ? pVertices.size() - 1 : pIndex - 1;
+  }
+
+  private static int computeNextIndex(final List<Point2D> pVertices, final int pIndex) {
+    return pIndex == pVertices.size() - 1 ? 0 : pIndex + 1;
+  }
+  
+  public double[][][] triangulationToColouring(List<Point2D> points){
+	  double[][][] triangles = new double[points.size()/3][3][2];
+	  int index = 0;
+	  for(int i = 0; i < points.size()/3; i++){
+		  for(int j = 0; j < 3; j++){			  
+			  triangles[i][j][0] = points.get(index).getX();
+			  triangles[i][j][1] = points.get(index++).getY();
+		  }
+	  }
+	  return triangles;
+  }
+  
+  public List<Point2D> colouringToPoints(double[][][] triangles){
+	  List<Point2D> points = new ArrayList<Point2D>();
+	  for(int i = 0; i < triangles.length; i++){
+		  for(int j = 0; j < triangles[i].length; j++){
+			  points.add(new Point2D.Double(triangles[i][j][0], triangles[i][j][1]));
+		  }
+	  }
+	  return points;
+  }
+  
 }
+
+

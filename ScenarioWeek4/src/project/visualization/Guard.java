@@ -1,56 +1,65 @@
 package project.visualization;
 
-import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
-import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import project.main.Main;
+import project.raycasting.Raycast;
+import project.util.Drawing;
+import project.util.Equal;
+import project.visualization.polygons.GuardPolygon;
 
 public class Guard {
-
-	private static final Color COLOR_GUARD = new Color(120, 250, 100);
 	
 	private Point2D guard;
 	public List<Point2D> points;
-
+	private GuardPolygon polygon;
+	
 	public Guard(double x, double y, Museum museum){
 		this.guard = new Point2D.Double(x, -y);
-		this.points = getPoints(guard, museum);
+		this.points = computePoints(guard, museum);
+		this.polygon = new GuardPolygon(points, guard);
 	}
 	
-	private static List<Point2D> getPoints(Point2D guard, Museum museum){
+	private static List<Point2D> computePoints(Point2D guard, Museum museum){
 		List<Point2D> guardPoints = new ArrayList<Point2D>();
-		for(Point2D point : museum.Modelpolygon.getVerticies()){
-			if(point.equals(guard)) continue;
-			List<Point2D> intersections = Functions.raycast(guard, point, museum.Modelpolygon, 0);
-			guardPoints.addAll(intersections);
+		guardPoints.add(guard);
+		List<Point2D> points = new ArrayList<Point2D>();
+		for(Point2D point : museum.getPoints()){
+			points.add(point);
 		}
-		Collections.sort(guardPoints, new Point2DComparator(guard));
+		Collections.sort(points, new Equal.RadianComparator(guard)); // Garrett: Order points, not guardPoints, attempt fix
+		for(Point2D point : points){
+			if(Equal.equal(guard, point)) continue;
+			List<Point2D> intersections = Raycast.raycast(guard, point, museum.getModel());
+			for(Point2D intersection : intersections){
+				if(Equal.equal(guard, intersection)) continue; // Garrett: Attempt fix
+				guardPoints.add(intersection);
+			}
+		}
+		//Collections.sort(guardPoints, new Equal.RadianComparator(guard));		
 		return guardPoints;
 	}
 	
+	public List<Point2D> getPoints(){
+		return points;
+	}
+	
+	public List<Polygon> getPolygons(){
+		return polygon.getPolygons();
+	}
+	
+	public GuardPolygon getModel(){
+		return polygon;
+	}
+	
 	public void paintComponent(Graphics2D g2){		
-		for(int i = 0; i < points.size(); i++){
-			Point2D p1 = points.get(i);
-			Point2D p2 = points.get((i+1)%points.size());
-			List<Point2D> guardPoints = new ArrayList<Point2D>();
-			guardPoints.add(guard);
-			guardPoints.add(p1);
-			guardPoints.add(p2);
-			Polygon triangle = Functions.PointListToPolygon(guardPoints);
-			g2.setColor(COLOR_GUARD);
-			g2.fillPolygon(triangle);
-			//g2.setColor(Color.ORANGE);
-			g2.draw(triangle);
-		}
-		g2.setColor(new Color(192, 64, 0));
-		Functions.draw(g2, guard);
+		polygon.paint(g2);
+		g2.setColor(Drawing.COLOR_GUARD);
+		Drawing.draw(g2, guard);
 	}
 	
 	@Override

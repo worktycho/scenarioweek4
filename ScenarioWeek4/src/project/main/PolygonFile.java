@@ -28,6 +28,7 @@ public class PolygonFile {
 	private static List<Museum> readFile(File file) throws FileNotFoundException{
 		Scanner scanner = new Scanner(file);
 		List<Museum> museums = new ArrayList<Museum>();
+		int i = 0;
 		while(scanner.hasNextLine()){
 			museums.add(readMuseum(scanner));
 		}

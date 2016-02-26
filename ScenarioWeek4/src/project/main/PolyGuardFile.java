@@ -3,9 +3,7 @@ package project.main;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 import project.visualization.Guard;
@@ -13,7 +11,7 @@ import project.visualization.Museum;
 
 public class PolyGuardFile {
 
-	private Map<Museum, List<Guard>> museums;
+	private List<Museum> museums;
 	
 	public PolyGuardFile(String filename){
 		File file = new File(getClass().getResource(filename).getPath());
@@ -25,21 +23,20 @@ public class PolyGuardFile {
 	}
 	
 	public List<Museum> getMuseums(){
-		return new ArrayList<Museum>(museums.keySet());
+		return museums;
 	}
 	
-	public List<Guard> getGuards(Museum museum){
-		return museums.getOrDefault(museum, new ArrayList<Guard>());
-	}
-	
-	private static Map<Museum, List<Guard>> readFile(File file) throws FileNotFoundException{
+	private static List<Museum> readFile(File file) throws FileNotFoundException{
 		Scanner scanner = new Scanner(file);
-		Map<Museum, List<Guard>> museums = new HashMap<Museum, List<Guard>>();
+		List<Museum> museums = new ArrayList<Museum>();
 		while(scanner.hasNextLine()){
-			String[] part = scanner.nextLine().split("; ");
+			String[] part = scanner.nextLine().split(";");
 			Museum museum = readMuseum(part[0]);
 			List<Guard> guards = readGuards(part[1], museum);
-			museums.put(museum, guards);
+			for(Guard guard : guards){
+				museum.add(guard);
+			}
+			museums.add(museum);
 		}
 		scanner.close();
 		return museums;
