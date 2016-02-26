@@ -1,5 +1,7 @@
 package project.visualization.polygons;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.geom.Point2D;
@@ -34,9 +36,8 @@ public class GuardPolygon {
 	}
 	
 	public void paint(Graphics2D g2){
-		g2.setColor(Drawing.COLOR_GUARD_SIGHT);
-		for(Polygon triangle : getPolygons()){
-			
+		for(Polygon triangle : getPolygons()){		
+			g2.setColor(Drawing.COLOR_GUARD_SIGHT);
 			g2.fillPolygon(triangle);
 			//g2.setColor(Color.ORANGE);
 			g2.draw(triangle);

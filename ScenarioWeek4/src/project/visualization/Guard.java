@@ -26,21 +26,12 @@ public class Guard {
 	
 	private static List<Point2D> computePoints(Point2D guard, Museum museum){
 		List<Point2D> guardPoints = new ArrayList<Point2D>();
-		guardPoints.add(guard);
-		List<Point2D> points = new ArrayList<Point2D>();
 		for(Point2D point : museum.getPoints()){
-			points.add(point);
-		}
-		Collections.sort(points, new Equal.RadianComparator(guard)); // Garrett: Order points, not guardPoints, attempt fix
-		for(Point2D point : points){
-			if(Equal.equal(guard, point)) continue;
+			if(point.equals(guard)) continue;
 			List<Point2D> intersections = Raycast.raycast(guard, point, museum.getModel());
-			for(Point2D intersection : intersections){
-				if(Equal.equal(guard, intersection)) continue; // Garrett: Attempt fix
-				guardPoints.add(intersection);
-			}
+			guardPoints.addAll(intersections);
 		}
-		//Collections.sort(guardPoints, new Equal.RadianComparator(guard));		
+		Collections.sort(guardPoints, new Equal.RadianComparator(guard));
 		return guardPoints;
 	}
 	

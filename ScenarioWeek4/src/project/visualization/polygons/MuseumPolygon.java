@@ -80,7 +80,7 @@ public class MuseumPolygon {
 	public void paint(Graphics2D g2){
 		Polygon polygon = getPolygon();
 		g2.setColor(Drawing.COLOR_MUSEUM);
-		g2.fillPolygon(polygon);	
+		g2.fillPolygon(polygon);			
 		g2.draw(polygon);
 	}
 }

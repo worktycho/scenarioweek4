@@ -39,7 +39,8 @@ public class AngleRange {
 		//angle += 2*Math.PI;
 		angle = angle % (2*Math.PI);
 		double angle_1 = initialAngle % (2*Math.PI);
-		double angle_2 = (initialAngle + differenceAngle) % (2*Math.PI);
+		double angle_2 = (initialAngle + differenceAngle);
+		if(initialAngle > Math.PI) initialAngle -= 2*Math.PI;
 		return (angle >= angle_1) && (angle <= angle_2);
 	}
 	

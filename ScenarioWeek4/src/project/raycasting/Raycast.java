@@ -84,36 +84,56 @@ public class Raycast {
 		double rayAngle = getAngle(rayRev, VERTICAL);
 		//System.out.println("Guard: " + guard + " | Point: " + point);
 		//System.out.println("Ray: " + Math.toDegrees(rayAngle));
-		if(Equal.equal(intersections.get(0), guard)){
-			//System.out.println("Intersection = Guard");
+		Point2D intersection = intersections.get(0);
+		if(intersection == null){
+			return visibleIntersections;
+		}
+		if(Equal.equal(intersection, guard)){
+			System.out.println("Intersection = Guard");
 			// ToDo: Handle zero length intersections
 			AngleRange homeIntersectionRange = polygon.getInsideRangeFromPoint(guard);
 			//System.out.println(homeIntersectionRange);
 			if (!homeIntersectionRange.contains(rayAngle)) {
+				System.out.println("Outside");
+				return visibleIntersections;
+			} else{
+				System.out.println("Inside");
+				visibleIntersections.add(intersection);
 				return visibleIntersections;
 			}
 		}		
+		visibleIntersections.add(intersection);
+		if(polygon.hasVertex(intersection)){
+			double angle = Math.atan2(ray.getY2() - ray.getY1(), ray.getX2() - ray.getX1());
+			double dist = ray.getP1().distance(ray.getP2());
+			double delta = 0.00001;
+			Point2D p1 = new Point2D.Double(guard.getX() + dist*Math.cos(angle+delta),
+											guard.getY() + dist*Math.sin(angle+delta));
+			Point2D p2 = new Point2D.Double(guard.getX() + dist*Math.cos(angle-delta),
+											guard.getY() + dist*Math.sin(angle-delta));
+			visibleIntersections.addAll(raycast(guard, p1, polygon));
+			visibleIntersections.addAll(raycast(guard, p2, polygon));
+		}
+		
+		/*
 		int i = 0;			
 		do {
 			Point2D intersection = intersections.get(i);
-			if(!Equal.contains(visibleIntersections, intersection)){
-				visibleIntersections.add(intersection);
-			}
+			System.out.println(intersection);
+			//if(!Equal.contains(visibleIntersections, intersection)){
+			visibleIntersections.add(intersection);
+			//}
+			AngleRange range = polygon.getInsideRangeFromPoint(intersections.get(i));
+			System.out.println("Ray: " + Math.toDegrees(rayAngle) + 
+								" | Init: " + Math.toDegrees(range.getInitial()) + 
+								" | Diff: " + Math.toDegrees(range.getDifference()));	
+			System.out.println(polygon.hasVertex(intersections.get(i)) + " " + range.contains(rayAngle));
 		} while (i + 1 < intersections.size() 
 				&& polygon.hasVertex(intersections.get(i))
 				&& polygon.getInsideRangeFromPoint(intersections.get(i)).contains(rayAngle) 
 				&& ++i > 0
 				);
-		// Garrett: Start attempt reversal for fix
-		Collections.sort(visibleIntersections, new Equal.EuclidianDistanceComparator(guard));
-		AngleRange range = polygon.getInsideRangeFromPoint(point);
-		double angle_1 = getAngle(range.getEdge1(), rayRev) - Math.PI;
-		double angle_2 = getAngle(range.getEdge2(), rayRev) - Math.PI;
-		rayAngle -= Math.PI;
-		if(angle_2 <= 0 && rayAngle >= 0){
-			Collections.reverse(visibleIntersections);
-		}
-		// Garrett End attempt
+		// Garrett End attempt*/
 		return visibleIntersections;
 	}
 

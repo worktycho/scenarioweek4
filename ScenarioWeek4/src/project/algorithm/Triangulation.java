@@ -1,9 +1,13 @@
 package project.algorithm;
 
+import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import project.raycasting.Raycast;
+import project.visualization.Museum;
 
 /**
  * A simple implementation of the ear cutting algorithm to Triangulation simple
@@ -21,6 +25,12 @@ public class Triangulation {
   private static final int CONVEX = -1;
 
   private int concaveVertexCount;
+  
+  private Museum museum;
+  
+  public Triangulation(Museum museum){
+	  this.museum = museum;
+  }
 
   /**
    * Triangulations the given (concave) polygon to a list of triangles. The
@@ -182,6 +192,14 @@ public class Triangulation {
     final int previousIndex = Triangulation.computePreviousIndex(pVertices, pEarTipIndex);
     final int nextIndex = Triangulation.computeNextIndex(pVertices, pEarTipIndex);
 
+    Line2D line_1 = new Line2D.Double(pVertices.get(previousIndex), pVertices.get(pEarTipIndex));
+    Line2D line_2 = new Line2D.Double(pVertices.get(pEarTipIndex), pVertices.get(nextIndex));
+    Line2D line_3 = new Line2D.Double(pVertices.get(nextIndex), pVertices.get(previousIndex));
+    
+    //if(museum.getModel().getInsideRangeFromPoint(pVertices.get(previousIndex)).contains(Raycast.getAngle(line_1, Raycast.VERTICAL))) return;
+    //if(museum.getModel().getInsideRangeFromPoint(pVertices.get(pEarTipIndex)).contains(Raycast.getAngle(line_2, Raycast.VERTICAL))) return;
+    //if(museum.getModel().getInsideRangeFromPoint(pVertices.get(nextIndex)).contains(Raycast.getAngle(line_3, Raycast.VERTICAL))) return;
+    
     if(!Triangulation.isCollinear(pVertices, previousIndex, pEarTipIndex, nextIndex)) {
       pTriangles.add((pVertices.get(previousIndex)));
       pTriangles.add((pVertices.get(pEarTipIndex)));

@@ -80,49 +80,49 @@ public class Colourer {
 				abcFlag.set(i, ' ');
 			}
 			for (int j = 0; j < 3; j++) {
-					for (int n = 0; n < a.size(); n++) {
-						if (a.get(n)[0] == triangle[j][0] && a.get(n)[1] == triangle[j][1]) { 
+					for (int n = 0; n < a.size(); n++) {						
+						if(Equal.equal(a.get(n)[0], triangle[j][0]) && Equal.equal(a.get(n)[1], triangle[j][1])) { 
 							abcFlag.set(j, 'a');
 							//System.out.println("Adding a");
 							break;
 						}
 					}
 					for (int k = 0; k < b.size(); k++) {
-						if (b.get(k)[0] == triangle[j][0] && b.get(k)[1] == triangle[j][1]) { 
+						if(Equal.equal(b.get(k)[0], triangle[j][0]) && Equal.equal(b.get(k)[1], triangle[j][1])) { 
 							abcFlag.set(j, 'b');
 							//System.out.println("Adding b");
 							break;
 						}
 					}
 					for (int m = 0; m < c.size(); m++) {
-						if (c.get(m)[0] == triangle[j][0] && c.get(m)[1] == triangle[j][1]) { 
+						if(Equal.equal(c.get(m)[0], triangle[j][0]) && Equal.equal(c.get(m)[1], triangle[j][1])) { 
 							abcFlag.set(j, 'c');
 							//System.out.println("Adding c");
 							break;
 						}
 					}
 				}
-			//System.out.println("abcFlag Start " + abcFlag);
+			System.out.println("abcFlag Start " + abcFlag);
 			if (!abcFlag.contains('a')) {
 				int indexFlag = abcFlag.indexOf(' ');
 				//System.out.println("Indexflag: " + indexFlag);
 				abcFlag.set(indexFlag, 'a');
 				a.add(triangle[indexFlag]);
-				//System.out.println("abcFlag " + abcFlag);
+				System.out.println("abcFlag " + abcFlag);
 			}
 			if (!abcFlag.contains('b')) {
 				int indexFlag = abcFlag.indexOf(' ');
 				abcFlag.set(indexFlag, 'b');
 				b.add(triangle[indexFlag]);
-				//System.out.println("abcFlag " + abcFlag);
+				System.out.println("abcFlag " + abcFlag);
 			}
 			if (!abcFlag.contains('c')) {
 				int indexFlag = abcFlag.indexOf(' ');
 				abcFlag.set(indexFlag, 'c');
 				c.add(triangle[indexFlag]);
-				//System.out.println("abcFlag " + abcFlag);
+				System.out.println("abcFlag " + abcFlag);
 			}
-			//System.out.println("abcFlag End " + abcFlag);
+			System.out.println("abcFlag End " + abcFlag);
 		}
 	}
 	

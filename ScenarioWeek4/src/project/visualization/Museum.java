@@ -38,7 +38,7 @@ public class Museum extends FPanel{
 		}
 		this.polygon = new MuseumPolygon(points);
 		this.guards = new ArrayList<Guard>();	
-		this.triangulation = new Triangulation();
+		this.triangulation = new Triangulation(this);
 		this.colourer = new Colourer();
 		this.checkingAlgorithm = new CheckingAlgorithm(this);
 	}
@@ -83,7 +83,10 @@ public class Museum extends FPanel{
 		for(Guard guard : guards){
 			guard.paintComponent(g2);
 		}
-		checkingAlgorithm.paintComponent(g2);
+		List<Point2D> trianglePoly = triangulation.computeTriangles(points);
+		g2.setColor(Color.ORANGE);
+		g2.draw(Drawing.pointsToPolygon(trianglePoly));
+		//checkingAlgorithm.paintComponent(g2);
 	}
 	
 	@Override
